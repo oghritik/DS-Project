@@ -1,0 +1,19 @@
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-primary);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  min-height: 0; /* Allow flex children to shrink */
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+  }
+}

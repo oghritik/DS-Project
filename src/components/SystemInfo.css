@@ -1,0 +1,80 @@
+.system-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.info-label {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 12px;
+}
+
+.info-value {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.leader-value {
+  font-size: var(--font-size-large);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-blue);
+}
+
+.status-value.in-progress {
+  color: var(--color-message-election);
+}
+
+.status-value.idle {
+  color: var(--color-accent-green);
+}
+
+.message-types {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.message-type {
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.message-type.election {
+  color: var(--color-message-election);
+  border: 1px solid var(--color-message-election);
+}
+
+.message-type.ok {
+  color: var(--color-message-ok);
+  border: 1px solid var(--color-message-ok);
+}
+
+.message-type.coordinator {
+  color: var(--color-message-coordinator);
+  border: 1px solid var(--color-message-coordinator);
+}
+
+.message-type.heartbeat {
+  color: #00E676;
+  border: 1px solid #00E676;
+}
+
+.message-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}

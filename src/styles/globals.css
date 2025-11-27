@@ -1,0 +1,73 @@
+:root {
+  /* Color Palette */
+  --color-bg-primary: #1E1E1E;
+  --color-bg-secondary: #2A2A2A;
+  --color-bg-console: #111111;
+  --color-text-primary: #FFFFFF;
+  --color-accent-blue: #4C9AFF;
+  --color-accent-green: #4CAF50;
+  --color-accent-red: #FF5252;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-shadow: rgba(0, 0, 0, 0.2);
+  
+  /* Message Colors */
+  --color-message-election: #FFD700;
+  --color-message-ok: #FF8C00;
+  --color-message-coordinator: #4C9AFF;
+  
+  /* Typography */
+  --font-family: 'Inter', 'SF Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size-base: 14px;
+  --font-size-large: 18px;
+  --font-size-title: 24px;
+  --font-weight-normal: 400;
+  --font-weight-bold: 600;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Border Radius */
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  overflow: hidden;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}

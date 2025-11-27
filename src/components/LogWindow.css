@@ -1,0 +1,108 @@
+.log-window {
+  height: 200px;
+  min-height: 150px;
+  background-color: var(--color-bg-console);
+  border-radius: var(--border-radius-md);
+  margin: var(--spacing-md);
+  margin-top: 0;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px var(--color-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .log-window {
+    height: 150px;
+  }
+}
+
+.log-header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.log-header h3 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.log-count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.log-container {
+  flex: 1;
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.log-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.log-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.log-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.log-empty {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  text-align: center;
+  padding: var(--spacing-lg);
+}
+
+.log-entry {
+  margin-bottom: var(--spacing-xs);
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.log-timestamp {
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+.log-message {
+  color: var(--color-text-primary);
+}
+
+.log-entry.log-election .log-message {
+  color: var(--color-message-election);
+}
+
+.log-entry.log-failure .log-message {
+  color: var(--color-accent-red);
+}
+
+.log-entry.log-recovery .log-message {
+  color: var(--color-accent-green);
+}
+
+.log-entry.log-leader .log-message {
+  color: var(--color-accent-blue);
+  font-weight: var(--font-weight-bold);
+}
+
+.log-entry.log-info .log-message {
+  color: var(--color-text-primary);
+}
