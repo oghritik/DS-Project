@@ -73,7 +73,7 @@ export class BullyAlgorithm {
   /**
    * Creates a message with unique ID, timestamp, and animation configuration
    */
-  private createMessage(type: MessageType, from: number, to: number, isHeartbeat = false): Message {
+  createMessage(type: MessageType, from: number, to: number, isHeartbeat = false): Message {
     const config = getMessageConfig(type, isHeartbeat);
     const now = Date.now();
     

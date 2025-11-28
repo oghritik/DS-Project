@@ -33,13 +33,13 @@ export interface ServerConfig {
   instanceId: string;
 }
 
-// Default animation configuration
+// Default animation configuration - optimized for smooth elections
 export const DEFAULT_ANIMATION_CONFIG: AnimationConfig = {
-  electionMessageDuration: 3000,    // 3 seconds for ELECTION messages (gold)
-  okMessageDuration: 2500,          // 2.5 seconds for OK messages (orange)
-  coordinatorMessageDuration: 2000, // 2 seconds for COORDINATOR messages (blue)
-  heartbeatMessageDuration: 1000,   // 1 second for HEARTBEAT messages (green)
-  animationSpeed: 0.005             // Much slower than original 0.02 for better visibility
+  electionMessageDuration: 1500,    // 1.5 seconds for ELECTION messages (gold) - faster
+  okMessageDuration: 1200,          // 1.2 seconds for OK messages (orange) - faster
+  coordinatorMessageDuration: 1800, // 1.8 seconds for COORDINATOR messages (blue) - slightly longer for importance
+  heartbeatMessageDuration: 1000,   // 1 second for HEARTBEAT messages (green) - unchanged
+  animationSpeed: 0.012             // Faster animation speed for smoother movement
 };
 
 // Message priority levels for overlap management

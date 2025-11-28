@@ -5,9 +5,10 @@ Interactive web-based tool for visualizing the Bully Algorithm in distributed sy
 ## Features
 
 - **Real-time Simulation**: Heartbeat monitoring every 2 seconds, elections with 4-second timeout
-- **Interactive Controls**: Start/stop simulation, toggle process failures, configure nodes
+- **Interactive Controls**: Start/stop simulation, toggle process failures, configure nodes, click-to-elect
 - **Visual Messages**: See ELECTION (gold), OK (orange), COORDINATOR (blue), and HEARTBEAT (green) messages
-- **Automatic Elections**: Leader failures trigger automatic elections
+- **Automatic Re-Elections**: Leader failures trigger automatic elections with full visual animation
+- **Failure Detection**: Both manual toggle and heartbeat timeout detection
 - **Custom Configuration**: Set 2-10 nodes with custom IDs
 
 ## Tech Stack
@@ -27,8 +28,10 @@ Open `http://localhost:5173`
 
 1. **Start Simulation**: Click play button to begin
 2. **Configure Nodes**: Set number of nodes (2-10) and custom IDs
-3. **Simulate Failures**: Toggle processes on/off to see elections
-4. **Watch Messages**: See different colored messages flow between nodes
+3. **Simulate Failures**: Toggle processes on/off to see automatic re-elections
+4. **Start Elections**: Click on any active (green) node to initiate an election from that process
+5. **Watch Auto Re-Elections**: See automatic elections when leader fails
+6. **Watch Messages**: See different colored messages flow between nodes
 
 ## Understanding the Visualization
 
@@ -43,6 +46,17 @@ Open `http://localhost:5173`
 - **Blue (COORDINATOR)**: New leader announces to all
 - **Green (HEARTBEAT)**: Leader sends ♥ every 2 seconds
 
+### Interactive Election
+- **Click any active node**: Starts election from that specific process
+- **Visual feedback**: Clicked nodes glow gold, election status shows initiator
+- **Smart prevention**: Cannot start election from failed nodes or during ongoing elections
+
+### Automatic Re-Election
+- **Leader Failure Detection**: System detects when leader fails (toggle off or heartbeat timeout)
+- **Auto-Initiation**: Lowest active process automatically starts election
+- **Visual Indicators**: 🚨 Orange banner for auto elections, red glow for failed leader
+- **Complete Animation**: Full ELECTION → OK → COORDINATOR message flow
+
 ### Timing
 - Heartbeat: Every 2 seconds
 - Election timeout: 4 seconds
@@ -51,10 +65,12 @@ Open `http://localhost:5173`
 
 Standard Bully Algorithm with heartbeat monitoring:
 
-1. Process detects leader failure → sends ELECTION to higher IDs
+1. Any process can initiate election → sends ELECTION to higher IDs
 2. Higher ID receives ELECTION → sends OK + starts own election  
-3. No OK received in 4s → declares itself leader + sends COORDINATOR
-4. Leader sends heartbeat every 2s → failure triggers new election
+3. Process continues until highest active process wins
+4. **Key principle: Highest-numbered active process always becomes leader**
+5. New leader sends COORDINATOR to all other processes
+6. Leader sends heartbeat every 2s → failure triggers new election
 
 ## Project Structure
 

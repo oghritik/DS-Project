@@ -8,6 +8,7 @@ interface SimulatorContextType {
   state: SimulatorState;
   toggleProcess: (processId: number) => void;
   startElection: (initiatorId?: number) => void;
+  startAutoElection: (detectorId: number) => void;
   resetSystem: () => void;
   addLog: (message: string, type: LogEntry['type']) => void;
   addMessage: (message: Message) => void;
@@ -22,12 +23,13 @@ interface SimulatorContextType {
 type SimulatorAction =
   | { type: 'TOGGLE_PROCESS'; processId: number }
   | { type: 'START_ELECTION'; initiatorId?: number }
+  | { type: 'START_AUTO_ELECTION'; detectorId: number }
   | { type: 'RESET_SYSTEM' }
   | { type: 'ADD_LOG'; message: string; logType: LogEntry['type'] }
   | { type: 'ADD_MESSAGE'; message: Message }
   | { type: 'REMOVE_MESSAGE'; messageId: string }
   | { type: 'UPDATE_LEADER'; leaderId: number }
-  | { type: 'SET_ELECTION_IN_PROGRESS'; inProgress: boolean }
+  | { type: 'SET_ELECTION_IN_PROGRESS'; inProgress: boolean; initiatorId?: number }
   | { type: 'CONFIGURE_NODES'; nodeIds: number[] }
   | { type: 'TOGGLE_SIMULATION' }
   | { type: 'UPDATE_HEARTBEAT' };
@@ -50,7 +52,7 @@ const calculatePositions = (numProcesses: number, centerX: number, centerY: numb
 // Initialize processes with given IDs
 const initializeProcesses = (nodeIds: number[] = [1, 2, 3, 4, 5]): Process[] => {
   const sortedIds = [...nodeIds].sort((a, b) => a - b);
-  const positions = calculatePositions(sortedIds.length, 400, 300, 150); // Default canvas center and radius
+  const positions = calculatePositions(sortedIds.length, 400, 300, 200); // Increased radius from 150 to 200 for more spacing
   const highestId = Math.max(...sortedIds);
   
   return sortedIds.map((id, i) => ({
@@ -69,40 +71,55 @@ const initialState: SimulatorState = {
   currentLeader: 5, // P5 is initial leader
   isElectionInProgress: false,
   isSimulationRunning: false,
-  lastHeartbeat: Date.now()
+  lastHeartbeat: Date.now(),
+  electionInitiator: null,
+  isAutoElection: false
 };
 
 const simulatorReducer = (state: SimulatorState, action: SimulatorAction): SimulatorState => {
   switch (action.type) {
     case 'TOGGLE_PROCESS': {
+      const toggledProcess = state.processes.find(p => p.id === action.processId);
+      const wasLeader = toggledProcess?.isLeader;
+      
       const updatedProcesses = state.processes.map(process => {
         if (process.id === action.processId) {
           return { ...process, isActive: !process.isActive, isLeader: false };
         }
-        return { ...process, isLeader: false };
+        return process;
       });
       
-      // Find new leader (highest active process)
-      const activeProcesses = updatedProcesses.filter(p => p.isActive);
-      const newLeader = activeProcesses.length > 0 
-        ? Math.max(...activeProcesses.map(p => p.id))
-        : null;
-      
-      if (newLeader) {
-        updatedProcesses.find(p => p.id === newLeader)!.isLeader = true;
+      // If the leader was toggled off, clear current leader (election will be triggered separately)
+      let newCurrentLeader = state.currentLeader;
+      if (wasLeader && toggledProcess && toggledProcess.isActive) {
+        // Leader failed
+        newCurrentLeader = null;
+        // Clear all leader flags
+        updatedProcesses.forEach(p => p.isLeader = false);
       }
       
       return {
         ...state,
         processes: updatedProcesses,
-        currentLeader: newLeader
+        currentLeader: newCurrentLeader
       };
     }
     
     case 'START_ELECTION': {
       return {
         ...state,
-        isElectionInProgress: true
+        isElectionInProgress: true,
+        electionInitiator: action.initiatorId || null,
+        isAutoElection: false
+      };
+    }
+    
+    case 'START_AUTO_ELECTION': {
+      return {
+        ...state,
+        isElectionInProgress: true,
+        electionInitiator: action.detectorId,
+        isAutoElection: true
       };
     }
     
@@ -158,7 +175,9 @@ const simulatorReducer = (state: SimulatorState, action: SimulatorAction): Simul
     case 'SET_ELECTION_IN_PROGRESS': {
       return {
         ...state,
-        isElectionInProgress: action.inProgress
+        isElectionInProgress: action.inProgress,
+        electionInitiator: action.inProgress ? (action.initiatorId || state.electionInitiator) : null,
+        isAutoElection: action.inProgress ? state.isAutoElection : false
       };
     }
     
@@ -231,16 +250,16 @@ export const SimulatorProvider: React.FC<{ children: ReactNode }> = ({ children 
             });
           }
         } else {
-          // Leader failed, start election from lowest active process
+          // Leader failed, start automatic election from lowest active process
           const activeProcesses = state.processes.filter(p => p.isActive);
           if (activeProcesses.length > 0 && !state.isElectionInProgress) {
-            const lowestActive = Math.min(...activeProcesses.map(p => p.id));
+            const detectorProcess = Math.min(...activeProcesses.map(p => p.id));
             dispatch({ 
               type: 'ADD_LOG', 
-              message: `Leader failure detected! Process P${lowestActive} initiating election`, 
+              message: `Heartbeat timeout! Process P${detectorProcess} detected leader failure and initiating election`, 
               logType: 'election' 
             });
-            startElection(lowestActive);
+            startAutoElection(detectorProcess);
           }
         }
       }, 2000); // 2 second heartbeat interval
@@ -283,14 +302,30 @@ export const SimulatorProvider: React.FC<{ children: ReactNode }> = ({ children 
     const process = state.processes.find(p => p.id === processId);
     if (!process) return;
     
+    const wasLeader = process.isLeader;
+    const wasActive = process.isActive;
+    
     dispatch({ type: 'TOGGLE_PROCESS', processId });
     
-    const action = process.isActive ? 'failed' : 'recovered';
+    const action = wasActive ? 'failed' : 'recovered';
     dispatch({ 
       type: 'ADD_LOG', 
       message: `Process ${process.label} ${action}`, 
-      logType: process.isActive ? 'failure' : 'recovery' 
+      logType: wasActive ? 'failure' : 'recovery' 
     });
+    
+    // If the leader failed and simulation is running, trigger automatic re-election
+    if (wasLeader && wasActive && state.isSimulationRunning && !state.isElectionInProgress) {
+      setTimeout(() => {
+        // Get current active processes (excluding the failed one)
+        const currentActiveProcesses = state.processes.filter(p => p.isActive && p.id !== processId);
+        if (currentActiveProcesses.length > 0) {
+          // Find a process to detect the failure and start election (lowest active process)
+          const detectorProcess = Math.min(...currentActiveProcesses.map(p => p.id));
+          startAutoElection(detectorProcess);
+        }
+      }, 1500); // Small delay to show the leader failure first
+    }
   };
   
   const startElection = (initiatorId?: number) => {
@@ -308,19 +343,68 @@ export const SimulatorProvider: React.FC<{ children: ReactNode }> = ({ children 
     dispatch({ type: 'START_ELECTION', initiatorId: initiator.id });
     dispatch({ 
       type: 'ADD_LOG', 
-      message: `Election started by Process ${initiator.label}`, 
+      message: `Manual election started by Process ${initiator.label}`, 
       logType: 'election' 
     });
     
-    // Use orchestrator to handle the election with 6-second timeout
+    // Use orchestrator to handle the election
     orchestratorRef.current.initiateElection(
       initiator.id,
       state.processes,
       (message) => dispatch({ type: 'ADD_MESSAGE', message }),
       (logMessage, logType) => dispatch({ type: 'ADD_LOG', message: logMessage, logType: logType as LogEntry['type'] }),
       (leaderId) => {
+        // Send coordinator messages when election completes
+        const coordinatorMessages = bullyAlgorithmRef.current.announceCoordinator(leaderId, state.processes);
+        
+        coordinatorMessages.forEach((message, index) => {
+          setTimeout(() => {
+            dispatch({ type: 'ADD_MESSAGE', message });
+          }, index * 100);
+        });
+        
         dispatch({ type: 'UPDATE_LEADER', leaderId });
         dispatch({ type: 'SET_ELECTION_IN_PROGRESS', inProgress: false });
+      }
+    );
+  };
+  
+  const startAutoElection = (detectorId: number) => {
+    if (state.isElectionInProgress) return;
+    
+    const detector = state.processes.find(p => p.id === detectorId && p.isActive);
+    if (!detector) return;
+    
+    dispatch({ type: 'START_AUTO_ELECTION', detectorId });
+    dispatch({ 
+      type: 'ADD_LOG', 
+      message: `🚨 Automatic re-election initiated by Process ${detector.label}`, 
+      logType: 'election' 
+    });
+    
+    // Use orchestrator to handle the automatic election
+    orchestratorRef.current.initiateElection(
+      detector.id,
+      state.processes,
+      (message) => dispatch({ type: 'ADD_MESSAGE', message }),
+      (logMessage, logType) => dispatch({ type: 'ADD_LOG', message: logMessage, logType: logType as LogEntry['type'] }),
+      (leaderId) => {
+        // Send coordinator messages when election completes
+        const coordinatorMessages = bullyAlgorithmRef.current.announceCoordinator(leaderId, state.processes);
+        
+        coordinatorMessages.forEach((message, index) => {
+          setTimeout(() => {
+            dispatch({ type: 'ADD_MESSAGE', message });
+          }, index * 100);
+        });
+        
+        dispatch({ type: 'UPDATE_LEADER', leaderId });
+        dispatch({ type: 'SET_ELECTION_IN_PROGRESS', inProgress: false });
+        dispatch({ 
+          type: 'ADD_LOG', 
+          message: `✅ Automatic re-election complete! Process P${leaderId} is the new leader`, 
+          logType: 'leader' 
+        });
       }
     );
   };
@@ -359,8 +443,8 @@ export const SimulatorProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
   
-  const setElectionInProgress = (inProgress: boolean) => {
-    dispatch({ type: 'SET_ELECTION_IN_PROGRESS', inProgress });
+  const setElectionInProgress = (inProgress: boolean, initiatorId?: number) => {
+    dispatch({ type: 'SET_ELECTION_IN_PROGRESS', inProgress, initiatorId });
   };
   
   const configureNodes = (nodeIds: number[]) => {
@@ -383,6 +467,7 @@ export const SimulatorProvider: React.FC<{ children: ReactNode }> = ({ children 
     state,
     toggleProcess,
     startElection,
+    startAutoElection,
     resetSystem,
     addLog,
     addMessage,

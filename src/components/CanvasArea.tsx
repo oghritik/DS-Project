@@ -6,16 +6,19 @@ import './CanvasArea.css';
 
 const CanvasArea: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { state, removeMessage, addLog, isSimulationRunning } = useSimulator();
+  const { state, removeMessage, addLog, isSimulationRunning, startElection } = useSimulator();
+  const prevLeaderRef = useRef<number | null>(state.currentLeader);
   const [hoveredProcess, setHoveredProcess] = useState<number | null>(null);
   const [heartbeatPulse, setHeartbeatPulse] = useState(0);
+  const [clickedProcess, setClickedProcess] = useState<number | null>(null);
+  const [failedLeader, setFailedLeader] = useState<number | null>(null);
 
   
   // Calculate process positions based on canvas size
-  const calculatePositions = (width: number, height: number) => {
+  const calculatePositions = (width: number, height: height) => {
     const centerX = width / 2;
     const centerY = height / 2;
-    const radius = Math.min(width, height) * 0.25;
+    const radius = Math.min(width, height) * 0.35; // Increased from 0.25 to 0.35 for more spacing
     
     return state.processes.map((process, index) => {
       const angle = (index * 2 * Math.PI) / state.processes.length - Math.PI / 2;
@@ -32,6 +35,24 @@ const CanvasArea: React.FC = () => {
   const drawProcess = (ctx: CanvasRenderingContext2D, process: Process, isHovered: boolean) => {
     const { x, y } = process.position;
     const radius = 35; // Slightly larger for better visibility
+    const isClicked = clickedProcess === process.id;
+    const isFailedLeader = failedLeader === process.id;
+    
+    // Add glow effect for hovered active processes, clicked processes, or failed leader
+    if ((isHovered && process.isActive) || isClicked || isFailedLeader) {
+      if (isFailedLeader) {
+        ctx.shadowColor = '#FF0000';
+        ctx.shadowBlur = 30;
+      } else if (isClicked) {
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 25;
+      } else {
+        ctx.shadowColor = '#4CAF50';
+        ctx.shadowBlur = 15;
+      }
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    }
     
     // Draw main circle
     ctx.beginPath();
@@ -45,9 +66,23 @@ const CanvasArea: React.FC = () => {
     }
     ctx.fill();
     
-    // Draw border
-    ctx.strokeStyle = process.isActive ? '#4CAF50' : '#FF5252';
-    ctx.lineWidth = 3;
+    // Reset shadow
+    ctx.shadowBlur = 0;
+    
+    // Draw border with enhanced thickness for special states
+    if (isFailedLeader) {
+      ctx.strokeStyle = '#FF0000';
+      ctx.lineWidth = 8;
+    } else if (isClicked) {
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 6;
+    } else if (isHovered && process.isActive) {
+      ctx.strokeStyle = '#4CAF50';
+      ctx.lineWidth = 5;
+    } else {
+      ctx.strokeStyle = process.isActive ? '#4CAF50' : '#FF5252';
+      ctx.lineWidth = 3;
+    }
     ctx.stroke();
     
     // Draw leader outline if this process is the leader
@@ -83,6 +118,13 @@ const CanvasArea: React.FC = () => {
     ctx.fillStyle = process.isActive ? '#4CAF50' : '#FF5252';
     ctx.font = 'bold 10px Inter, sans-serif';
     ctx.fillText(statusText, x, y + radius + 15);
+    
+    // Draw clickable indicator for hovered active processes
+    if (isHovered && process.isActive) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.fillText('Click to start election', x, y + radius + 30);
+    }
   };
   
   const drawMessage = (ctx: CanvasRenderingContext2D, message: Message, processes: Process[]) => {
@@ -284,7 +326,7 @@ const CanvasArea: React.FC = () => {
     }
   };
   
-  const drawSimulationStatus = (ctx: CanvasRenderingContext2D, _width: number, _height: number) => {
+  const drawSimulationStatus = (ctx: CanvasRenderingContext2D, width: number, _height: number) => {
     // Draw simulation status in top-left corner
     const statusText = isSimulationRunning ? 'SIMULATION RUNNING' : 'SIMULATION PAUSED';
     const statusColor = isSimulationRunning ? '#4CAF50' : '#FF5252';
@@ -306,12 +348,98 @@ const CanvasArea: React.FC = () => {
       ctx.fillStyle = `rgba(76, 175, 80, ${0.5 + heartbeatPulse * 0.5})`;
       ctx.fill();
     }
+    
+    // Draw election status in top-right corner
+    if (state.isElectionInProgress) {
+      let electionText: string;
+      let backgroundColor: string;
+      let textColor: string;
+      
+      if (state.isAutoElection) {
+        electionText = state.electionInitiator 
+          ? `🚨 AUTO RE-ELECTION (P${state.electionInitiator})`
+          : '🚨 AUTO RE-ELECTION';
+        backgroundColor = 'rgba(255, 69, 0, 0.9)'; // Orange-red for automatic
+        textColor = '#FFFFFF';
+      } else {
+        electionText = state.electionInitiator 
+          ? `ELECTION (P${state.electionInitiator} initiated)`
+          : 'ELECTION IN PROGRESS';
+        backgroundColor = 'rgba(255, 215, 0, 0.8)'; // Gold for manual
+        textColor = '#B8860B';
+      }
+      
+      const textWidth = ctx.measureText(electionText).width + 20;
+      
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(width - textWidth - 10, 10, textWidth, 30);
+      
+      ctx.fillStyle = textColor;
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(electionText, width - textWidth/2 - 10, 25);
+      
+      // Add pulsing election indicator with different colors
+      const electionPulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+      ctx.beginPath();
+      ctx.arc(width - 25, 25, 6, 0, 2 * Math.PI);
+      if (state.isAutoElection) {
+        ctx.fillStyle = `rgba(255, 69, 0, ${electionPulse})`;
+      } else {
+        ctx.fillStyle = `rgba(255, 215, 0, ${electionPulse})`;
+      }
+      ctx.fill();
+    }
+    
+    // Draw instruction text at bottom
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(10, _height - 40, width - 20, 30);
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Click on any active (green) node to start a Bully Algorithm election from that node', width / 2, _height - 25);
   };
   
   const handleMouseLeave = () => {
     setHoveredProcess(null);
     if (canvasRef.current) {
       canvasRef.current.style.cursor = 'default';
+    }
+  };
+
+  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    
+    const processes = calculatePositions(canvas.width, canvas.height);
+    
+    for (const process of processes) {
+      const distance = Math.sqrt(
+        Math.pow(mouseX - process.position.x, 2) + 
+        Math.pow(mouseY - process.position.y, 2)
+      );
+      
+      if (distance <= 35) { // Process radius
+        // Only allow election initiation from active processes
+        if (process.isActive && !state.isElectionInProgress) {
+          setClickedProcess(process.id);
+          startElection(process.id);
+          addLog(`Election manually triggered by clicking Process P${process.id}`, 'election');
+          
+          // Clear the click effect after a short time
+          setTimeout(() => setClickedProcess(null), 1000);
+        } else if (!process.isActive) {
+          addLog(`Cannot start election from failed Process P${process.id}`, 'info');
+        } else if (state.isElectionInProgress) {
+          addLog(`Election already in progress - please wait`, 'info');
+        }
+        break;
+      }
     }
   };
   
@@ -327,6 +455,21 @@ const CanvasArea: React.FC = () => {
       setHeartbeatPulse(0);
     }
   }, [state.lastHeartbeat, isSimulationRunning]);
+
+  // Leader failure detection effect
+  useEffect(() => {
+    const prevLeader = prevLeaderRef.current;
+    const currentLeader = state.currentLeader;
+    
+    // If we had a leader and now we don't (leader failed)
+    if (prevLeader !== null && currentLeader === null && isSimulationRunning) {
+      setFailedLeader(prevLeader);
+      // Clear the failed leader effect after 2 seconds
+      setTimeout(() => setFailedLeader(null), 2000);
+    }
+    
+    prevLeaderRef.current = currentLeader;
+  }, [state.currentLeader, isSimulationRunning]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -365,23 +508,27 @@ const CanvasArea: React.FC = () => {
           const timeElapsed = currentTime - message.startTime;
           const timeProgress = timeElapsed / message.duration;
           
-          // Message is complete when time duration is reached
-          if (timeProgress >= 1.0) {
+          // Message is complete when time duration is reached OR when it reaches the target
+          if (timeProgress >= 1.0 || message.progress >= 1.0) {
             message.progress = 1.0;
             completedMessages.push(message);
-            removeMessage(message.id);
           } else {
-            // Update progress based on time and animation speed
-            const speedProgress = message.progress + (message.animationSpeed || 0.005);
+            // Update progress based on time and animation speed - faster animation
+            const speedProgress = message.progress + (message.animationSpeed || 0.012);
             message.progress = Math.min(timeProgress, speedProgress);
           }
         } else {
           // Fallback to original animation system for messages without timing
+          message.progress += 0.015; // Faster default speed
           if (message.progress >= 1.0) {
             completedMessages.push(message);
-            removeMessage(message.id);
           }
         }
+      });
+      
+      // Remove completed messages immediately to prevent overlap
+      completedMessages.forEach(message => {
+        removeMessage(message.id);
       });
       
       // Handle completed messages
@@ -401,7 +548,19 @@ const CanvasArea: React.FC = () => {
       });
       
       // Draw all messages (progress is now updated above)
-      state.messages.forEach(message => {
+      // Sort messages by priority and timestamp to show most important ones first
+      const sortedMessages = [...state.messages].sort((a, b) => {
+        // First sort by priority (higher priority first)
+        const priorityDiff = (b.priority || 0) - (a.priority || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        // Then by timestamp (newer first for better visibility)
+        return b.timestamp - a.timestamp;
+      });
+      
+      // Limit concurrent messages to prevent visual overload (max 8 messages at once)
+      const visibleMessages = sortedMessages.slice(0, 8);
+      
+      visibleMessages.forEach(message => {
         drawMessage(ctx, message, processes);
       });
       
@@ -424,8 +583,9 @@ const CanvasArea: React.FC = () => {
         ref={canvasRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
+        onClick={handleCanvasClick}
         role="img"
-        aria-label="Distributed system visualization showing process nodes and message animations"
+        aria-label="Distributed system visualization showing process nodes and message animations. Click on any active node to start an election."
       />
     </div>
   );

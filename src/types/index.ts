@@ -34,6 +34,8 @@ export interface SimulatorState {
   isElectionInProgress: boolean;
   isSimulationRunning: boolean;
   lastHeartbeat: number;
+  electionInitiator: number | null;
+  isAutoElection: boolean;
 }
 
 export type MessageType = 'ELECTION' | 'OK' | 'COORDINATOR';
