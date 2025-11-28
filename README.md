@@ -1,6 +1,15 @@
 # Bully Algorithm Simulator
+Interactive **web-based visualization tool** for the Bully Leader Election Algorithm in distributed systems.  
+This simulator shows failure detection, heartbeats, elections, OK signals, and automatic leader recovery — all in real time.
 
-Interactive web-based tool for visualizing the Bully Algorithm in distributed systems.
+<div align="center">
+  <img 
+    src="Screenshot 2025-11-28 at 6.30.22 PM.png" 
+    alt="Bully Algorithm Simulator Banner" 
+    width="900"
+    style="border-radius: 10px;"
+  />
+</div>
 
 ## Features
 
@@ -11,9 +20,16 @@ Interactive web-based tool for visualizing the Bully Algorithm in distributed sy
 - **Failure Detection**: Both manual toggle and heartbeat timeout detection
 - **Custom Configuration**: Set 2-10 nodes with custom IDs
 
-## Tech Stack
+## 📦 Dependencies
 
-React 19 + TypeScript + HTML5 Canvas + Vite
+The project uses the following:
+
+- **Node.js 18+**
+- **React 19**
+- **TypeScript**
+- **Vite**
+- **HTML5 Canvas API**
+- **CSS (no frameworks required)**
 
 ## Quick Start
 
@@ -44,7 +60,7 @@ Open `http://localhost:5173`
 - **Gold (ELECTION)**: Lower ID → Higher ID processes
 - **Orange (OK)**: Higher ID → Lower ID responses (dashed lines)
 - **Blue (COORDINATOR)**: New leader announces to all
-- **Green (HEARTBEAT)**: Leader sends ♥ every 2 seconds
+- **Green (HEARTBEAT)**: Leader sends 💚 every 2 seconds
 
 ### Interactive Election
 - **Click any active node**: Starts election from that specific process
